@@ -1,0 +1,84 @@
+---
+title: "TUGAS SISTEM INFORMASI MANAJEMEN"
+author: "M0725030_Sania Niwa Ningrum"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  pdf_document: default
+  latex_engine: xelatex
+mainfont: Times New Roman
+---
+  Pada tugas ini, saya akan menganalisis apakah terdapat perbedaan profit antar jenis produk pada dataset Coffee Chain. Analisis ini dilakukan untuk memahami apakah jenis produk berpengaruh terhadap besar kecilnya profit yang diperoleh.
+
+  Langkah pertama adalah mengimpor dataset Coffee Chain ke dalam R studio. Karena saya memilih mengimpor data dengan format .xlsx, maka saya menggunakan package readxl. Datasets ini berisi beberapa variabel, yaitu Area Code, Date, Market, Market Size, Product, Product Line, Product Type, State, Type, Budget COGS, Budget Margin, Budget Profit, Budget Sales, COGS, Inventory, Margin, Marketing, Profit, Sales, dan Total Expenses. Variabel-variabel ini mencakup informasi terkait produk, penjualan, biaya, serta profit yang digunakan dalam analisis.
+
+```{r impor dataset, warning=FALSE}
+library(readxl)
+Dataset<- read_excel("~/Materi Kuliah/SIM/1. Tugas SIM 2025B - Coffee Chain Datasets.xlsx")
+```
+
+  Selanjutnya dilakukan pengambilan sampel dari dataset untuk mempermudah proses analisis. Sampel diambil secara acak sebanyak 1000 baris dengan fungsi sample() dan dengan bantuan set.seed() agar pengambilan sampel dapat konsisten. Selain itu, saya hanya mengambil kolom Product Type dan profit untuk dianalisis
+```{r ambil data yang diperlukan}
+set.seed(123)
+newdata <- Dataset[sample(nrow(Dataset), 1000), c(7, 18)]
+```
+
+  Sebelum melakukan pengujian lebih lanjut, dilakukan pengecekan terhadap asumsi normalitas data. Pengujian ini bertujuan untuk mengetahui apakah data residual berdistribusi normal atau tidak, sehingga dapat menentukan metode analisis yang tepat untuk digunakan.
+```{r}
+anova <- aov(Profit ~ `Product Type`, data = newdata)
+cek <- residuals(anova)
+shapiro.test(cek)
+```
+  Berdasarkan hasil uji Shapiro-Wilk terhadap residual, diperoleh nilai statistik uji sebesar W = 0,82842 dengan p-value < 2,2 × 10^-16. Karena nilai p-value jauh lebih kecil dari tingkat signifikansi 0,05, maka hipotesis nol yang menyatakan bahwa data berdistribusi normal ditolak. Dengan demikian, dapat disimpulkan bahwa residual tidak berdistribusi normal.
+  
+  Untuk memperkuat hasil uji normalitas, dilakukan pengecekan secara visual menggunakan QQ plot. Grafik ini digunakan untuk mengevaluasi apakah distribusi residual mengikuti distribusi normal, yang ditunjukkan dengan kesesuaian titik-titik terhadap garis diagonal. Penyimpangan dari garis tersebut mengindikasikan adanya penyimpangan dari asumsi normalitas.
+```{r cek normalitas}
+qqnorm(cek, col = "pink", lwd = 3)
+qqline(cek, col = "darkred", lwd = 3)
+```
+  QQ plot menunjukkan bahwa residual tidak berdistribusi normal karena titik-titik tidak mengikuti garis diagonal dan membentuk pola melengkung (S-shape), dengan penyimpangan yang jelas pada kedua ekor distribusi. Pada bagian tengah, titik masih relatif mendekati garis sehingga nilai pusat data cukup stabil, namun pada ekor kiri terlihat adanya nilai profit yang sangat rendah (outlier negatif), dan pada ekor kanan terdapat nilai profit yang sangat tinggi (outlier positif), yang menandakan distribusi memiliki heavy tails dan cenderung skewed. Hal ini mengindikasikan bahwa terdapat variasi ekstrem dalam data profit sehingga asumsi normalitas tidak terpenuhi secara keseluruhan.
+
+  Tidak terpenuhinya asumsi normalitas ini menunjukkan bahwa penggunaan metode parametrik seperti ANOVA menjadi kurang tepat untuk digunakan dalam analisis. Oleh karena itu, untuk mengatasi pelanggaran asumsi tersebut, analisis dilanjutkan menggunakan metode non-parametrik yaitu uji Kruskal-Wallis yang tidak mensyaratkan distribusi normal.
+
+```{r uji kruskal}
+kruskal.test(Profit ~ `Product Type`, data = newdata)
+```
+  Berdasarkan hasil uji Kruskal-Wallis, diperoleh nilai statistik uji chi-squared sebesar 2,4655 dengan derajat kebebasan (df) sebesar 3 dan p-value sebesar 0,4816.
+
+  Nilai p-value tersebut lebih besar dari tingkat signifikansi yang digunakan (alpha = 0,05), sehingga hipotesis nol (H0) tidak ditolak. Dengan demikian, dapat disimpulkan bahwa tidak terdapat perbedaan yang signifikan secara statistik pada distribusi profit antar jenis produk.
+
+  Hal ini menunjukkan bahwa variasi profit yang terjadi pada masing-masing jenis produk relatif serupa dan tidak cukup kuat secara statistik untuk dinyatakan berbeda. Dengan kata lain, jenis produk tidak memberikan pengaruh yang signifikan terhadap besar kecilnya profit yang diperoleh.
+
+  Selanjutnya, saya melakukan visualisasi data menggunakan boxplot untuk melihat distribusi profit pada masing-masing jenis produk. Visualisasi ini bertujuan untuk memberikan gambaran mengenai sebaran data, median, serta kemungkinan adanya nilai ekstrem (outlier) pada setiap kelompok produk.
+```{r visualisasi boxplot}
+library(ggplot2)
+ggplot(newdata, aes(x = `Product Type`, y = Profit)) +
+  geom_boxplot(fill = "maroon") +
+  ggtitle("Distribusi Profit Berdasarkan Jenis Produk")
+```
+  Berdasarkan boxplot, terlihat bahwa distribusi profit pada keempat jenis produk (Coffee, Espresso, Herbal Tea, dan Tea) memiliki pola yang relatif mirip. Median profit dari masing-masing produk tidak menunjukkan perbedaan yang mencolok, meskipun Tea dan Herbal Tea tampak sedikit lebih tinggi dibandingkan Coffee dan Espresso. Selain itu, variasi data pada setiap produk juga terlihat cukup serupa, meskipun Tea dan Herbal Tea memiliki sebaran yang sedikit lebih lebar, yang menunjukkan adanya profit yang lebih besar.
+
+  Pada boxplot juga terlihat adanya beberapa outlier baik di sisi atas maupun bawah pada seluruh jenis produk, yang menunjukkan bahwa terdapat nilai profit yang sangat tinggi maupun kerugian yang cukup besar pada kondisi tertentu. Secara keseluruhan, meskipun terdapat sedikit perbedaan dalam median dan penyebaran data, distribusi profit antar jenis produk cenderung tidak berbeda secara signifikan.
+
+```{r visualisasi dengan bar chart, warning=FALSE, message=FALSE}
+library(dplyr)
+total_profit <- newdata %>%
+  group_by(`Product Type`) %>%
+  summarise(Total_Profit = sum(Profit, na.rm = TRUE))
+
+
+ggplot(total_profit, aes(x = `Product Type`, y = Total_Profit)) +
+  geom_bar(stat = "identity", fill = "maroon") +
+  labs(title = "Total Profit Berdasarkan Jenis Produk",
+       x = "Product Type",
+       y = "Total Profit")
+```
+  Berdasarkan visualisasi bar chart yang menampilkan total profit berdasarkan jenis produk, terlihat bahwa produk Coffee dan Espresso memiliki total profit tertinggi, diikuti oleh Herbal Tea, sementara Tea memiliki total profit paling rendah. Secara visual, perbedaan tinggi batang pada grafik menunjukkan adanya variasi kontribusi profit antar jenis produk.
+
+  Namun, penting untuk dipahami bahwa bar chart ini merepresentasikan akumulasi (total) profit, bukan distribusi atau rata-rata profit per transaksi. Oleh karena itu, perbedaan yang terlihat pada grafik kemungkinan besar dipengaruhi oleh faktor lain, bukan karena adanya perbedaan performa profit yang signifikan secara statistik.
+  
+  Hal ini sejalan dengan hasil uji Kruskal-Wallis yang menunjukkan bahwa tidak terdapat perbedaan signifikan pada distribusi profit antar jenis produk (p-value = 0,4816 > 0,05). Dengan kata lain, meskipun secara total terdapat variasi profit yang terlihat pada bar chart, variasi tersebut tidak cukup kuat secara statistik untuk menyatakan bahwa satu jenis produk memiliki profit yang berbeda secara signifikan dibandingkan yang lain.
+
+  Berdasarkan seluruh hasil analisis yang telah dilakukan, dapat disimpulkan bahwa tidak terdapat perbedaan yang signifikan secara statistik pada profit antar jenis produk. Hal ini didukung oleh hasil uji Kruskal-Wallis yang menunjukkan nilai p-value lebih besar dari 0,05, serta diperkuat oleh visualisasi boxplot yang menunjukkan distribusi profit yang relatif serupa di setiap kategori produk. Meskipun visualisasi bar chart memperlihatkan adanya perbedaan pada total profit antar produk, perbedaan tersebut lebih dipengaruhi oleh perbedaan jumlah transaksi dibandingkan perbedaan karakteristik profit per transaksi.
+  
+  Dengan demikian, dapat dikatakan bahwa jenis produk bukan merupakan faktor utama yang memengaruhi besar kecilnya profit, sehingga analisis lebih lanjut perlu difokuskan pada variabel lain yang berpotensi memiliki pengaruh lebih besar terhadap profit penjualan.
